@@ -215,6 +215,49 @@ func TestSchemaCustomizer(t *testing.T) {
 }`, string(jsonSchema))
 }
 
+func TestSchemaCustomizerWithLongEmbeddedField(t *testing.T) {
+	type Embedded struct {
+		EmbeddedField string
+		With string
+		Many string
+		Properties string
+	}
+
+	type Bla struct {
+		Embedded `json:"embedded"`
+	}
+
+	schemaRef, _, err := NewSchemaRefForValue(&Bla{}, UseAllExportedFields(), SchemaCustomizer(func(name string, ft reflect.Type, tag reflect.StructTag, schema *openapi3.Schema) error {
+		t.Logf("Field=%s,Tag=%s", name, tag)
+		return nil
+	}))
+	require.NoError(t, err)
+	jsonSchema, err := json.MarshalIndent(schemaRef, "", "  ")
+	require.NoError(t, err)
+	require.JSONEq(t, `{
+  "properties": {
+    "embedded": {
+      "properties": {
+        "EmbeddedField": {
+          "type": "string"
+        },
+		"With": {
+          "type": "string"
+        },
+		"Many": {
+          "type": "string"
+        },
+		"Properties": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    }
+  },
+  "type": "object"
+}`, string(jsonSchema))
+}
+
 func TestSchemaCustomizerError(t *testing.T) {
 	type Bla struct{}
 	_, _, err := NewSchemaRefForValue(&Bla{}, UseAllExportedFields(), SchemaCustomizer(func(name string, ft reflect.Type, tag reflect.StructTag, schema *openapi3.Schema) error {
